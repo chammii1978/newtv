@@ -1,0 +1,66 @@
+name: Make-Playlist-Actions
+on:
+ workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      
+    - name: Installing Dependencies
+      continue-on-error: true
+      run: |
+            wget https://github.com/Shra1V32/exp_tatasky/raw/main/figlet >> /dev/null 2>&1
+            chmod 755 figlet
+            ./figlet && rm figlet
+            git config --global user.name "${{ secrets.git_id }}"
+            git config --global user.email "${{ secrets.git_mail }}"
+            git clone https://github.com/Sanju2105/ST-tatasky
+            cd ST-tatasky/code_samples/
+            sudo apt install expect -y >> /dev/null 2>&1
+            wget https://gist.github.com/Sanju2105/e81cbc927728fa0057c579316b7737d6/raw/script.exp >> /dev/null 2>&1
+            chmod 755 script.exp
+            pass=$(echo '${{ secrets.tata_pass }}' | sed 's#\$#\\\\$#g' )
+            sed -i "s/PASSWORD/$pass/g" script.exp
+            sed -i 's/SUB_ID/${{ secrets.sub_id }}/g' script.exp
+            sed -i 's/MOB_NO/${{ secrets.tata_mobile }}/g' script.exp
+            ./script.exp
+            rm script.exp
+            wget https://gist.github.com/Sanju2105/e81cbc927728fa0057c579316b7737d6/raw/script.exp >> /dev/null 2>&1
+            chmod 755 script.exp
+            touch mytoken.txt
+            echo "${{ secrets.git_token }}" >> mytoken.txt
+            gh auth login --with-token < mytoken.txt
+            rm mytoken.txt
+            cd ..
+            touch allChannelPlaylist.m3u
+            echo "Initial Test" >> allChannelPlaylist.m3u
+            gh gist create allChannelPlaylist.m3u | tee gist_link.txt >> /dev/null 2>&1
+            sed -i 's/gist/${{ secrets.git_token }}@gist/g' gist_link.txt
+            gist_url=$(cat gist_link.txt)
+            dir="${gist_url##*/}"
+            rm allChannelPlaylist.m3u && rm gist_link.txt
+            gh repo create TataSkyIPTV-Daily --private -y || echo "New repo has been created"
+            mkdir -p .github/workflows && cd .github/workflows
+            wget https://gist.githubusercontent.com/Nageshwar128/9bb06a83b4fb55d744a0099cf34e8b5d/raw/TataSkyDailyWorkflow.yml >> /dev/null 2>&1
+            wget https://gist.githubusercontent.com/Nageshwar128/469d24f4739c64542c7c4fa074dc95bf/raw/substitute.txt >> /dev/null 2>&1
+            export dir=$dir
+            export gist_url=$gist_url
+            export git_id=${{ secrets.git_id }}
+            export git_token=${{ secrets.git_token }}
+            export git_mail=${{ secrets.git_mail }}
+            cat substitute.txt | envsubst >> TataSkyDailyWorkflow.yml
+            rm substitute.txt
+            cd ../..
+            rm .gitignore
+            touch .gitignore && echo "pycache" >> .gitignore && echo "allChannelPlaylist.m3u" >> .gitignore && echo "userSubscribedChannels.json" >> .gitignore
+            git remote remove origin
+            git remote add origin https://${{ secrets.git_token }}@github.com/${{ secrets.git_id }}/TataSkyIPTV-Daily
+            git branch -M main default || git branch -M main
+            git add .
+            git commit --author="Sanjay<st21051989@gmail.com>" -m "Adapt Repo for auto-loop"
+            git push --set-upstream origin main || { echo "Force pushing..."; git push -f --set-upstream origin main; }
+            git clone ${gist_url} >> /dev/null 2>&1
+            cd ${dir} && rm allChannelPlaylist.m3u && mv ../code_samples/allChannelPlaylist.m3u .
+            git add .
+            git commit -m "Initial Playlist Upload"
+            git push >> /dev/null 2>&1
